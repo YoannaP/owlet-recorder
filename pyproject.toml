@@ -1,0 +1,13 @@
+[project]
+name = "owlet-recorder"
+version = "0.1.0"
+description = "Records an Owlet Dream Sock's reported vitals and serves Live, Night and Trends dashboards"
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.9",
+    "certifi",
+    "pyowletapi>=2025.4.10",
+]
+
+[tool.uv]
+package = false

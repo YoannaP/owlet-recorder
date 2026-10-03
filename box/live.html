@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Owlet · Live</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/static/live.css" />
+    <script src="/static/plotly.min.js" defer></script>
+    <script src="/static/chart.js" defer></script>
+    <script src="/static/recording-context.js" defer></script>
+    <script src="/static/live.js" defer></script>
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <main>
+      <header>
+        <a class="brand" href="/">owlet<span>°</span></a>
+      </header>
+      <h1>Live readings</h1>
+      <p class="status" id="status" aria-live="polite">
+        <i></i><span>Loading latest recorded reading…</span>
+      </p>
+      <p class="notice" id="notice" role="status" hidden></p>
+      <section
+        id="inactiveReadings"
+        class="live-inactive"
+        aria-label="Unavailable readings"
+      >
+        <p id="unavailableCopy">Waiting for the latest recorded reading.</p>
+        <div id="historyStatus" aria-live="polite">
+          <p id="historyMessage">Checking for recorded nights…</p>
+          <a id="latestNight" class="live-history-link" href="/week" hidden
+            >View latest recorded night</a
+          >
+          <button id="retryHistory" class="live-history-retry" hidden>
+            Retry history lookup
+          </button>
+        </div>
+      </section>
+      <section
+        class="overview"
+        id="latestVitals"
+        aria-label="Latest recorded readings"
+        hidden
+      >
+        <div class="reading">
+          <p class="reading-label">Heart rate</p>
+          <p class="value" id="heartRate">—<small>bpm</small></p>
+          <p class="caption" id="heartRateCaption">Loading</p>
+        </div>
+        <div class="reading">
+          <p class="reading-label">Oxygen</p>
+          <p class="value" id="oxygen">—<small>%</small></p>
+          <p class="caption" id="oxygenCaption">Loading</p>
+        </div>
+        <div class="movement-reading">
+          <p class="reading-label" id="movementLabel">Movement</p>
+          <div
+            class="movement-meter"
+            id="movementMeter"
+            role="meter"
+            aria-labelledby="movementLabel"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <span class="movement-fill" id="movementFill"></span>
+            <span class="movement-marker" id="movementMarker"></span>
+          </div>
+          <div class="movement-scale" aria-hidden="true">
+            <span>Low</span><span>High</span>
+          </div>
+          <p class="caption" id="movementCaption">Loading</p>
+        </div>
+      </section>
+      <div class="device" id="device" aria-label="Device status">
+        <span id="battery">Battery status unavailable</span>
+      </div>
+      <section class="explorer">
+        <div class="explorer-head">
+          <button
+            class="explore-button live-explore"
+            id="expand"
+            aria-label="Explore chart"
+            title="Explore chart"
+          >
+            ↗
+          </button>
+          <div
+            class="metric-tabs live-metrics"
+            role="tablist"
+            aria-label="Chart metric"
+          >
+            <button
+              role="tab"
+              id="tab-hr"
+              data-metric="hr"
+              aria-selected="true"
+            >
+              Heart rate</button
+            ><button
+              role="tab"
+              id="tab-ox"
+              data-metric="ox"
+              aria-selected="false"
+            >
+              Oxygen
+            </button>
+            <button
+              role="tab"
+              id="tab-sleep"
+              data-metric="sleep"
+              aria-selected="false"
+            >
+              Reported sleep
+            </button>
+            <button
+              role="tab"
+              id="tab-temp"
+              data-metric="temp"
+              aria-selected="false"
+            >
+              Sock temperature
+            </button>
+            <button
+              role="tab"
+              id="tab-movement"
+              data-metric="movement"
+              aria-selected="false"
+            >
+              Movement
+            </button>
+            <button
+              role="tab"
+              id="tab-position"
+              data-metric="position"
+              aria-selected="false"
+            >
+              Position
+            </button>
+          </div>
+        </div>
+        <div id="chartPanel" role="tabpanel" aria-labelledby="tab-hr">
+          <div class="chart-head">
+            <div>
+              <p class="chart-stat" id="chartValue">Heart rate</p>
+              <p class="caption" id="chartCaption">Recorded readings</p>
+            </div>
+            <div class="periods" aria-label="Chart time range">
+              <button data-period="1" aria-pressed="false">1h</button
+              ><button data-period="3" aria-pressed="false">3h</button
+              ><button data-period="all" class="active" aria-pressed="true">
+                All
+              </button>
+            </div>
+          </div>
+          <p class="caption" id="metricLatest" hidden></p>
+          <div
+            id="plot"
+            class="plot"
+            aria-label="Interactive recorded readings chart"
+          ></div>
+          <div id="chartEmpty" class="empty" hidden>
+            Nothing was recorded in this window.
+          </div>
+          <div class="chart-meta">
+            <span id="resolution">Loading readings…</span
+            ><span class="gap-key">Missing readings stay blank</span>
+          </div>
+        </div>
+      </section>
+      <details class="disclosure live-device-details" id="deviceDetails">
+        <summary>Device details</summary>
+        <p id="deviceFacts">No device status recorded.</p>
+      </details>
+      <details class="disclosure">
+        <summary>About these readings</summary>
+        <p id="metricExplanation">Heart rate readings reported by Owlet.</p>
+        <p>
+          Live shows the latest recorded reading and its age. It cannot
+          establish the baby's current condition.
+        </p>
+      </details>
+      <footer>
+        A record, not a monitor. The Owlet app and base station remain the
+        alarm.
+      </footer>
+    </main>
+    <nav aria-label="Main navigation">
+      <span class="brand nav-brand">owlet<span>°</span></span>
+      <a href="/" aria-current="page"
+        ><svg
+          class="nav-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M12 7v5l3 2" /></svg
+        ><span>Live</span></a
+      >
+      <a href="/week"
+        ><svg
+          class="nav-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M20.9 13.2A9 9 0 0 1 10.8 3.1 9 9 0 1 0 20.9 13.2Z" /></svg
+        ><span>Night</span></a
+      >
+      <a href="/trends"
+        ><svg
+          class="nav-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M4 4v16h16M7 14l4-5 4 3 5-7" /></svg
+        ><span>Trends</span></a
+      >
+    </nav>
+    <dialog id="expanded" aria-labelledby="expandedTitle">
+      <div class="expanded-head">
+        <div>
+          <p class="eyebrow">Live readings</p>
+          <h2 id="expandedTitle">Heart rate</h2>
+        </div>
+        <button
+          id="closeExpanded"
+          class="icon-button"
+          aria-label="Close Explore"
+        >
+          ×
+        </button>
+      </div>
+      <div id="expandedControls"></div>
+      <div id="expandedPlot" class="expanded-plot"></div>
+    </dialog>
+  </body>
+</html>

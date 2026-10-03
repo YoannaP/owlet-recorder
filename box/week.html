@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Owlet · Night</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/static/live.css" />
+    <script src="/static/plotly.min.js" defer></script>
+    <script src="/static/chart.js" defer></script>
+    <script src="/static/recording-context.js" defer></script>
+    <script src="/static/night.js" defer></script>
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <main>
+      <header>
+        <a class="brand" href="/">owlet<span>°</span></a>
+      </header>
+      <div class="title-row">
+        <div>
+          <h1 id="nightTitle">Loading night…</h1>
+        </div>
+        <div class="date-controls">
+          <button class="icon-button" id="older" aria-label="Previous night">
+            ‹</button
+          ><button class="icon-button" id="newer" aria-label="Next night">
+            ›
+          </button>
+        </div>
+      </div>
+      <p class="status" id="status" aria-live="polite">
+        <i></i><span>Loading recorded nights…</span>
+      </p>
+      <p class="notice" id="notice" role="status" hidden></p>
+      <section
+        class="overview night-overview"
+        aria-label="Selected night summary"
+      >
+        <div class="reading">
+          <p class="reading-label">Recorded sleep</p>
+          <p class="value" id="recordedSleep">—</p>
+          <p class="caption" id="sleepCaption">Full night</p>
+        </div>
+        <div class="reading">
+          <p class="reading-label">Recording coverage</p>
+          <p class="value" id="coverage">—<small>%</small></p>
+          <p class="caption" id="coverageCaption">Loading interval</p>
+        </div>
+      </section>
+      <section class="explorer">
+        <div class="explorer-head">
+          <button
+            class="explore-button night-explore"
+            id="expand"
+            aria-label="Explore chart"
+            title="Explore chart"
+          >
+            <span aria-hidden="true">↗</span>
+          </button>
+          <div
+            class="metric-tabs night-metrics"
+            role="tablist"
+            aria-label="Chart metric"
+          >
+            <button
+              role="tab"
+              id="tab-hr"
+              data-metric="hr"
+              aria-selected="true"
+            >
+              Heart rate</button
+            ><button
+              role="tab"
+              id="tab-ox"
+              data-metric="ox"
+              aria-selected="false"
+            >
+              Oxygen
+            </button>
+            <button
+              role="tab"
+              id="tab-sleep"
+              data-metric="sleep"
+              aria-selected="false"
+            >
+              Reported sleep
+            </button>
+            <button
+              role="tab"
+              id="tab-temp"
+              data-metric="temp"
+              aria-selected="false"
+            >
+              Sock temperature
+            </button>
+            <button
+              role="tab"
+              id="tab-movement"
+              data-metric="movement"
+              aria-selected="false"
+            >
+              Movement
+            </button>
+            <button
+              role="tab"
+              id="tab-position"
+              data-metric="position"
+              aria-selected="false"
+            >
+              Position
+            </button>
+          </div>
+        </div>
+        <div id="chartPanel" role="tabpanel" aria-labelledby="tab-hr">
+          <div class="chart-head">
+            <div>
+              <p class="chart-stat" id="chartValue">—</p>
+              <p class="caption" id="chartCaption">Full-night summary</p>
+            </div>
+            <div class="periods" aria-label="Chart time range">
+              <button data-period="1" aria-pressed="false">1h</button
+              ><button data-period="3" aria-pressed="false">3h</button
+              ><button data-period="all" class="active" aria-pressed="true">
+                All
+              </button>
+            </div>
+          </div>
+          <div
+            id="plot"
+            class="plot"
+            aria-label="Interactive selected-night chart"
+          ></div>
+          <div id="chartEmpty" class="empty" hidden>
+            Nothing was recorded for this night.
+          </div>
+          <div class="chart-meta">
+            <span id="resolution">Loading readings…</span
+            ><span class="gap-key">Missing readings stay blank</span>
+          </div>
+        </div>
+      </section>
+      <details class="disclosure">
+        <summary>About this night</summary>
+        <p id="metricExplanation"></p>
+        <p>
+          Coverage is recorded duration divided by the interval from the first
+          to last worn reading. Gaps and invalid readings count as missing.
+        </p>
+      </details>
+      <footer>
+        A record, not a monitor. The Owlet app and base station remain the
+        alarm.
+      </footer>
+    </main>
+    <nav aria-label="Main navigation">
+      <span class="brand nav-brand">owlet<span>°</span></span>
+      <a href="/"
+        ><svg
+          class="nav-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M12 7v5l3 2" /></svg
+        ><span>Live</span></a
+      >
+      <a href="/week" aria-current="page"
+        ><svg
+          class="nav-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M20.9 13.2A9 9 0 0 1 10.8 3.1 9 9 0 1 0 20.9 13.2Z" /></svg
+        ><span>Night</span></a
+      >
+      <a href="/trends"
+        ><svg
+          class="nav-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M4 4v16h16M7 14l4-5 4 3 5-7" /></svg
+        ><span>Trends</span></a
+      >
+    </nav>
+    <dialog id="expanded" aria-labelledby="expandedTitle">
+      <div class="expanded-head">
+        <div>
+          <p class="eyebrow" id="expandedDate">Selected night</p>
+          <h2 id="expandedTitle">Heart rate</h2>
+        </div>
+        <button
+          id="closeExpanded"
+          class="icon-button"
+          aria-label="Close Explore"
+        >
+          ×
+        </button>
+      </div>
+      <div id="expandedControls"></div>
+      <div id="expandedPlot" class="expanded-plot"></div>
+    </dialog>
+  </body>
+</html>

@@ -1,0 +1,51 @@
+# Owlet recorder: polls Owlet's cloud every 5s into SQLite.
+#
+# Unlike owlet-web.service, this unit has no IPAddressDeny/IPAddressAllow pair.
+# It must reach Owlet's cloud over the public internet --
+#   www.googleapis.com / securetoken.googleapis.com  (Firebase auth)
+#   ayla-sso[.eu].owletdata.com                      (mini token)
+#   ads-field[-eu]-*.aylanetworks.com                (vitals)
+# -- and those are CDN-backed with no stable address range to allow. The unit
+# still cannot listen on anything: it opens no sockets of its own.
+[Unit]
+Description=Owlet vitals recorder
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=owlet
+Group=owlet
+WorkingDirectory=/home/owlet/owlet-recorder
+ExecStart=/home/owlet/.local/bin/uv run python logger.py \
+    --interval 5 --no-raw --db /home/owlet/owlet-data/owlet.db
+EnvironmentFile=-/home/owlet/owlet.env
+Restart=on-failure
+RestartSec=30
+MemoryMax=400M
+SyslogIdentifier=owlet-recorder
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=tmpfs
+BindPaths=/home/owlet
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

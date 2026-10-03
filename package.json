@@ -1,0 +1,22 @@
+{
+  "name": "owlet-recorder",
+  "private": true,
+  "scripts": {
+    "test:browser": "npm run test:browser:live && npm run test:browser:night && npm run test:browser:trends && npm run test:browser:sleep && npm run test:browser:accessibility && npm run test:browser:navigation && npm run test:browser:composition && npm run test:browser:exploration && npm run test:browser:inactive && npm run test:browser:chart-details && npm run test:browser:typography",
+    "test:browser:live": "node tests/live.browser.mjs",
+    "test:browser:night": "node tests/night.browser.mjs",
+    "test:browser:trends": "node tests/trends.browser.mjs",
+    "test:browser:sleep": "node tests/sleep.browser.mjs",
+    "test:browser:accessibility": "node tests/accessibility.browser.mjs",
+    "test:browser:navigation": "node tests/navigation.browser.mjs",
+    "test:browser:composition": "node tests/composition.browser.mjs",
+    "test:browser:exploration": "node tests/exploration.browser.mjs",
+    "test:browser:inactive": "node tests/inactive.browser.mjs",
+    "test:browser:chart-details": "node tests/chart-details.browser.mjs",
+    "test:browser:typography": "node tests/typography.browser.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.55.0",
+    "prettier": "^3.6.2"
+  }
+}

@@ -1,0 +1,52 @@
+# Owlet dashboard: JSON API + live page, loopback only.
+#
+# Reach it over an SSH tunnel or publish it to your tailnet with
+# `tailscale serve`; it must never bind a public address. It needs no outbound
+# internet, so it only accepts loopback and Tailscale (CGNAT/ULA) addresses.
+[Unit]
+Description=Owlet live dashboard
+After=network-online.target owlet-recorder.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=owlet
+Group=owlet
+WorkingDirectory=/home/owlet/owlet-recorder
+ExecStart=/home/owlet/.local/bin/uv run python server.py \
+    --host 127.0.0.1 --port 8400 --db /home/owlet/owlet-data/owlet.db
+EnvironmentFile=-/home/owlet/owlet.env
+Restart=on-failure
+RestartSec=10
+MemoryMax=300M
+SyslogIdentifier=owlet-web
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=tmpfs
+BindPaths=/home/owlet
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+UMask=0077
+IPAddressDeny=any
+IPAddressAllow=localhost
+IPAddressAllow=100.64.0.0/10
+IPAddressAllow=fd7a:115c:a1e0::/48
+
+[Install]
+WantedBy=multi-user.target

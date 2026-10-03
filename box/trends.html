@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Owlet · Trends</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/static/live.css" />
+    <script src="/static/plotly.min.js" defer></script>
+    <script src="/static/chart.js" defer></script>
+    <script src="/static/trends.js" defer></script>
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <main>
+      <header>
+        <a class="brand" href="/">owlet<span>°</span></a>
+      </header>
+      <div class="title-row">
+        <div>
+          <h1>Trends</h1>
+        </div>
+      </div>
+      <p class="status" id="status" aria-live="polite">
+        <i></i><span>Loading recorded nights…</span>
+      </p>
+      <p class="notice" id="notice" role="status" hidden></p>
+      <section class="explorer">
+        <div class="explorer-head">
+          <button class="explore-button" id="expand" aria-label="Explore chart">
+            Explore
+          </button>
+          <div
+            class="metric-tabs trend-metrics"
+            role="tablist"
+            aria-label="Trend metric"
+          >
+            <button
+              role="tab"
+              id="tab-hr_median"
+              data-metric="hr_median"
+              aria-selected="true"
+            >
+              Heart rate
+            </button>
+            <button
+              role="tab"
+              id="tab-oxygen_p5"
+              data-metric="oxygen_p5"
+              aria-selected="false"
+            >
+              Oxygen
+            </button>
+            <button
+              role="tab"
+              id="tab-sleep_hours"
+              data-metric="sleep_hours"
+              aria-selected="false"
+            >
+              Recorded sleep
+            </button>
+            <button
+              role="tab"
+              id="tab-coverage_percent"
+              data-metric="coverage_percent"
+              aria-selected="false"
+            >
+              Coverage
+            </button>
+            <button
+              role="tab"
+              id="tab-movement_active_percent"
+              data-metric="movement_active_percent"
+              aria-selected="false"
+            >
+              Movement
+            </button>
+            <button
+              role="tab"
+              id="tab-temp_median"
+              data-metric="temp_median"
+              aria-selected="false"
+            >
+              Sock temperature
+            </button>
+            <button
+              role="tab"
+              id="tab-position_back_percent"
+              data-metric="position_back_percent"
+              aria-selected="false"
+            >
+              Position
+            </button>
+          </div>
+        </div>
+        <div id="chartPanel" role="tabpanel" aria-labelledby="tab-hr_median">
+          <div class="chart-head">
+            <div>
+              <p class="chart-stat" id="chartValue">—</p>
+              <p class="caption" id="chartCaption">Select a recorded night</p>
+            </div>
+            <div class="periods" aria-label="History period">
+              <button data-period="7" class="active" aria-pressed="true">
+                7d
+              </button>
+              <button data-period="30" aria-pressed="false">30d</button>
+              <button data-period="90" aria-pressed="false">90d</button>
+              <button data-period="all" aria-pressed="false">All</button>
+            </div>
+          </div>
+          <div
+            id="plot"
+            class="plot"
+            aria-label="Interactive nightly trends chart"
+          ></div>
+          <div id="chartEmpty" class="empty" hidden>
+            No recorded nights in this period.
+          </div>
+          <div class="chart-meta">
+            <span id="resolution">Nightly statistics</span>
+            <span class="gap-key">Missing nights stay blank</span>
+          </div>
+        </div>
+      </section>
+      <details class="disclosure" open>
+        <summary>Choose a night without the chart</summary>
+        <p>
+          <label for="nightSelect">Recorded night</label>
+          <select id="nightSelect"></select>
+          <button id="openNight">Open Night</button>
+        </p>
+      </details>
+      <footer>
+        A record, not a monitor. The Owlet app and base station remain the
+        alarm.
+      </footer>
+    </main>
+    <nav aria-label="Main navigation">
+      <span class="brand nav-brand">owlet<span>°</span></span>
+      <a href="/"
+        ><svg
+          class="nav-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M12 7v5l3 2" /></svg
+        ><span>Live</span></a
+      >
+      <a href="/week"
+        ><svg
+          class="nav-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M20.9 13.2A9 9 0 0 1 10.8 3.1 9 9 0 1 0 20.9 13.2Z" /></svg
+        ><span>Night</span></a
+      >
+      <a href="/trends" aria-current="page"
+        ><svg
+          class="nav-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M4 4v16h16M7 14l4-5 4 3 5-7" /></svg
+        ><span>Trends</span></a
+      >
+    </nav>
+    <dialog id="expanded" aria-labelledby="expandedTitle">
+      <div class="expanded-head">
+        <div>
+          <p class="eyebrow">Across recorded nights</p>
+          <h2 id="expandedTitle">Heart rate</h2>
+        </div>
+        <button
+          id="closeExpanded"
+          class="icon-button"
+          aria-label="Close Explore"
+        >
+          ×
+        </button>
+      </div>
+      <div id="expandedControls"></div>
+      <div id="expandedPlot" class="expanded-plot"></div>
+      <p class="expanded-night-action">
+        <button id="expandedOpenNight" disabled>Open selected Night</button>
+      </p>
+    </dialog>
+  </body>
+</html>
