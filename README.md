@@ -204,6 +204,14 @@ uv run python -m unittest discover -s tests -p 'test_*.py'
 npm ci && npx playwright install chromium && npm run test:browser
 ```
 
+## Support
+
+This is a free, volunteer project, maintained on a best-effort basis. There is
+no hosted service, no guaranteed uptime and no individual setup support. Owlet
+can change its cloud at any time, which may stop recording until the code is
+updated. Bug reports and pull requests are welcome; report security problems
+privately as described in [SECURITY.md](SECURITY.md).
+
 ## Credits
 
 Built on [`pyowletapi`](https://github.com/ryanbdclark/pyowletapi), which
@@ -211,4 +219,5 @@ handles Owlet's authentication. Charts use [Plotly](https://plotly.com/javascrip
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). Bundled third-party code is listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
