@@ -53,7 +53,15 @@ async function waitForServer() {
 fixture();
 server = spawn(
   python,
-  ["server.py", "--port", String(port), "--db", database, "--timezone", "Europe/London"],
+  [
+    "server.py",
+    "--port",
+    String(port),
+    "--db",
+    database,
+    "--timezone",
+    "Europe/London",
+  ],
   { stdio: ["ignore", "ignore", "pipe"] },
 );
 const browser = await playwright.chromium.launch({
@@ -72,10 +80,13 @@ try {
   await additions.waitForFunction(
     () => !document.querySelector("#latestVitals").hidden,
   );
-  for (const [metric, name, latest] of [
-    ["temp", "Sock temperature", "34 °C assumed"],
-    ["movement", "Movement", "0 reported units"],
-    ["position", "Reported position", "Unknown"],
+  // The fixture's collection gap is in view for temperature and movement, so
+  // their context strip appears. Position history spans only the last 15
+  // minutes, where nothing interrupted recording, so its strip stays hidden.
+  for (const [metric, name, latest, context] of [
+    ["temp", "Sock temperature", "34 °C assumed", true],
+    ["movement", "Movement", "0 reported units", true],
+    ["position", "Reported position", "Unknown", false],
   ]) {
     await additions.locator(`[data-metric="${metric}"]`).click();
     await additions.waitForFunction(
@@ -88,8 +99,8 @@ try {
       `${metric} latest readout missing`,
     );
     assert(
-      await additions.locator("#plot-context-period").isVisible(),
-      `${metric} context missing`,
+      (await additions.locator("#plot-context-period").isVisible()) === context,
+      `${metric} context ${context ? "missing" : "shown without a gap in view"}`,
     );
   }
   assert(

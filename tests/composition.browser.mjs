@@ -36,7 +36,15 @@ try {
     if (fixture.status) throw new Error(fixture.stderr);
     server = spawn(
       python,
-      ["server.py", "--port", String(port), "--db", database, "--timezone", "Europe/London"],
+      [
+        "server.py",
+        "--port",
+        String(port),
+        "--db",
+        database,
+        "--timezone",
+        "Europe/London",
+      ],
       {
         stdio: "ignore",
       },
@@ -125,7 +133,7 @@ try {
           contentBottom: main.bottom,
           contextVisible: [
             ...document.querySelectorAll(
-              'h1, #status, .overview .reading-label, .overview .value, .overview .caption, .metric-tabs [aria-selected="true"]',
+              'h1, #status, .overview .reading-label, .overview .value, .overview .caption:not(.repeats-age), .metric-tabs [aria-selected="true"]',
             ),
           ].every(withinContent),
           captions,

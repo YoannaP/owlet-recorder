@@ -28,7 +28,15 @@ const fixture = spawnSync(python, ["tests/night_fixture.py", database], {
 if (fixture.status) throw new Error(fixture.stderr);
 server = spawn(
   python,
-  ["server.py", "--port", String(port), "--db", database, "--timezone", "Europe/London"],
+  [
+    "server.py",
+    "--port",
+    String(port),
+    "--db",
+    database,
+    "--timezone",
+    "Europe/London",
+  ],
   {
     stdio: ["ignore", "ignore", "pipe"],
   },
@@ -436,13 +444,10 @@ try {
     ).includes("charging 2"),
     "context detail lost the reported charging code",
   );
+  // The last hour holds only recorded readings, so the strip hides.
   await temperaturePage.locator('[data-period="1"]').click();
   await temperaturePage.waitForFunction(
-    () => document.querySelector("#plot-context-period").options.length === 1,
-  );
-  assert(
-    (await contextSelect.textContent()).includes("05:00"),
-    "context did not follow the selected chart range",
+    () => document.querySelector(".recording-context").hidden,
   );
   await temperaturePage.locator('[data-period="all"]').click();
   await temperaturePage.waitForFunction(

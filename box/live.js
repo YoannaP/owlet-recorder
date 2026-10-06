@@ -78,6 +78,8 @@
       meter.setAttribute("aria-valuetext", "Unavailable");
     }
     byId("movementCaption").textContent = caption;
+    // When movement is available its age is the heart rate's; phones hide the repeat.
+    byId("movementCaption").classList.toggle("repeats-age", available);
   }
 
   function renderLatest() {
@@ -111,6 +113,7 @@
       notice.textContent = "";
       delete status.dataset.ageSeconds;
       byId("battery").textContent = "Battery status unavailable";
+      byId("titleBattery").textContent = "";
       byId("deviceFacts").textContent = "No device status recorded.";
       return;
     }
@@ -168,6 +171,8 @@
         ? "unknown"
         : Math.round(latest.signal_strength);
     byId("battery").textContent = `Battery ${battery}`;
+    // Phones show the battery beside the title instead of in its own row.
+    byId("titleBattery").textContent = `Battery ${battery}`;
     byId("deviceFacts").textContent =
       `Raw signal ${signal}. Reported sleep state: ${latest.sleep_label.toLowerCase()}. Device facts from the latest recorded reading.`;
   }
@@ -180,7 +185,7 @@
       const last = state.positionRows.at(-1);
       element.textContent = !last
         ? "No position history archived in the last 12 hours."
-        : `${state.seriesFailed ? "History refresh failed · " : ""}${OwletChart.metrics.position.ticktext[last.position]} · Recorded ${new Intl.DateTimeFormat("en-GB", { timeZone: state.timezone || "Europe/London", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: "short" }).format(last.t * 1000)} · ${ageText(Math.max(0, Math.round(Date.now() / 1000 - last.t)))} · History may arrive later.`;
+        : `${state.seriesFailed ? "History refresh failed · " : ""}${OwletChart.metrics.position.ticktext[last.position]} · Recorded ${new Intl.DateTimeFormat("en-GB", { timeZone: state.timezone || "UTC", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: "short" }).format(last.t * 1000)} · ${ageText(Math.max(0, Math.round(Date.now() / 1000 - last.t)))} · History may arrive later.`;
       return;
     }
     const value =
