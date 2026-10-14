@@ -63,6 +63,11 @@ uv run python server.py --timezone Europe/Paris      # http://127.0.0.1:8400/
 `--timezone` (or the `OWLET_TIMEZONE` environment variable) is the IANA zone
 that decides where a night starts and ends. It defaults to UTC.
 
+The dashboard only answers requests addressed to `127.0.0.1`, `localhost` or
+`[::1]`, which blocks web pages that try to reach it through your browser (DNS
+rebinding). If you open it by another name, such as a tailnet machine name,
+add it with `--allowed-host my-server` or `OWLET_ALLOWED_HOSTS=my-server`.
+
 The logger has to keep running to record anything. Owlet does not keep
 second-by-second history, so whatever happens while it is stopped is gone.
 
@@ -77,6 +82,9 @@ uv run python scripts/demo_data.py data/demo.db --live &
 uv run python server.py --db data/demo.db          # http://127.0.0.1:8400/
 ```
 
+It will not replace an existing file unless you pass `--overwrite`, and never
+one that holds real recordings.
+
 To re-record the GIF above, see the header of `scripts/record_demo.mjs`.
 
 ## Running it on a server
@@ -84,7 +92,9 @@ To re-record the GIF above, see the header of `scripts/record_demo.mjs`.
 `box/` contains a deploy script and two hardened systemd units for an
 always-on Linux host (Debian/Ubuntu). It creates a dedicated `owlet` user with
 a `0700` home and a nologin shell. The recorder and web app run as that user,
-and the web app binds loopback only.
+and the web app binds loopback only. The script deploys your committed `HEAD`,
+not uncommitted edits, and stores the Owlet token in a separate folder that the
+web app cannot read.
 
 ```sh
 uv run python probe.py                               # tokens are created locally
@@ -95,7 +105,8 @@ OWLET_HOST=root@my-server OWLET_TIMEZONE=Europe/Paris ./box/deploy.sh
 | ---------------- | --------------------------------------------------------------------------------------- |
 | `OWLET_HOST`     | Required. SSH destination that logs in as root.                                         |
 | `OWLET_TIMEZONE` | IANA zone that defines a night. Default `UTC`.                                          |
-| `SERVE_PORT`     | If set, publish the dashboard to your tailnet with `tailscale serve --http=$SERVE_PORT`. |
+| `SERVE_PORT`     | If set, publish the dashboard to your tailnet with `tailscale serve --http=$SERVE_PORT`. The host's tailnet names are then allowed automatically. |
+| `OWLET_ALLOWED_HOSTS` | Extra comma-separated names you open the dashboard by.                             |
 | `OWLET_URL`      | If set, the script verifies the served pages and cache headers at this base URL.       |
 
 Without Tailscale, reach it over an SSH tunnel:

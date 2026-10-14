@@ -69,7 +69,8 @@ async def archive(session, api, sock, conn):
     async with session.get(url, headers=api.headers,
                            params={"limit": "100"}) as r:
         if r.status != 200:
-            raise RuntimeError(f"HTTP {r.status}: {(await r.text())[:200]}")
+            # The body is not logged: it can echo account or device details.
+            raise RuntimeError(f"HTTP {r.status}")
         dps = json.loads(await r.text())
     return _store(conn, sock.serial, dps), len(dps)
 
@@ -109,4 +110,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    os.umask(0o077)
     asyncio.run(main())

@@ -13,6 +13,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import re
 import sqlite3
 from math import ceil, floor, isfinite
 from zoneinfo import ZoneInfo
@@ -85,9 +86,21 @@ async def latest(request):
     return web.json_response(r)
 
 
+MAX_SERIES_HOURS = 48
+
+
 async def series(request):
     db = request.app["db"]
-    hours = float(request.query.get("hours", 12))
+    try:
+        hours = float(request.query.get("hours", 12))
+    except ValueError:
+        hours = float("nan")
+    # Bounded so one request cannot load the whole history into memory.
+    if not (isfinite(hours) and 0 < hours <= MAX_SERIES_HOURS):
+        return web.json_response(
+            {"ok": False, "reason": f"hours must be above 0 and at most {MAX_SERIES_HOURS}"},
+            status=400,
+        )
     now = dt.datetime.now().timestamp()
     since = int(now - hours * 3600)
     # Keep the payload small on long ranges without hiding gaps.
@@ -501,7 +514,7 @@ async def night_detail(request):
         return web.json_response({"ok": False, "reason": "night required"}, status=400)
     try:
         start, end = night_bounds(key)
-    except ValueError:
+    except (ValueError, OverflowError):
         return web.json_response({"ok": False, "reason": "bad date"}, status=400)
 
     try:
@@ -614,9 +627,50 @@ async def trends(request):
 PAGE_HEADERS = {"Cache-Control": "no-cache"}
 
 
+# Plotly injects its own <style> element, hence 'unsafe-inline' for styles only.
+SECURITY_HEADERS = {
+    "Content-Security-Policy": (
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; "
+        "base-uri 'none'; form-action 'self'"
+    ),
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Server": "owlet-recorder",
+}
+LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
+
+def host_name(header):
+    """'Example.ts.net:8443' -> 'example.ts.net'; '[::1]:8400' -> '::1'."""
+    host = header.strip().lower()
+    if host.startswith("["):
+        host = host[1 : host.find("]")]
+    elif host.count(":") == 1:
+        host = host.split(":")[0]
+    return host.rstrip(".")
+
+
+@web.middleware
+async def host_check(request, handler):
+    # The app has no login; it relies on being reachable only from loopback or
+    # a private network. A web page can still re-point its own domain at
+    # 127.0.0.1 (DNS rebinding) and read the API as same-origin, so only
+    # answer requests addressed to a name this install was told to expect.
+    if host_name(request.headers.get("Host", "")) not in request.app["allowed_hosts"]:
+        return web.Response(status=421, text="Misdirected request", headers=SECURITY_HEADERS)
+    return await handler(request)
+
+
 @web.middleware
 async def cache_headers(request, handler):
-    response = await handler(request)
+    try:
+        response = await handler(request)
+    except web.HTTPException as error:
+        error.headers.update(SECURITY_HEADERS)
+        raise
+    response.headers.update(SECURITY_HEADERS)
     if (
         request.path == "/"
         or request.path in ("/week", "/trends")
@@ -626,15 +680,39 @@ async def cache_headers(request, handler):
     return response
 
 
+def ui_assets():
+    """Only the files box/ui-assets.sh ships are served, never the whole box/
+    folder (which also holds deploy scripts and unit files)."""
+    with open(os.path.join(HERE, "box", "ui-assets.sh")) as manifest:
+        block = re.search(r"UI_ASSETS=\((.*?)\)", manifest.read(), re.S).group(1)
+    return {name for name in block.split() if not name.startswith("#")}
+
+
+async def static_asset(request):
+    name = request.match_info["name"]
+    if name not in request.app["ui_assets"]:
+        raise web.HTTPNotFound()
+    return web.FileResponse(os.path.join(HERE, "box", name))
+
+
 async def index(request):
     return web.FileResponse(
         os.path.join(HERE, "box", "live.html"), headers=PAGE_HEADERS
     )
 
 
-def create_app(db):
-    app = web.Application(middlewares=[cache_headers])
+def allowed_hosts(extra=()):
+    names = set(LOOPBACK_HOSTS)
+    configured = os.environ.get("OWLET_ALLOWED_HOSTS", "").split(",")
+    names.update(host_name(name) for name in [*configured, *extra] if name.strip())
+    return names
+
+
+def create_app(db, extra_hosts=()):
+    app = web.Application(middlewares=[host_check, cache_headers])
     app["db"] = db
+    app["allowed_hosts"] = allowed_hosts(extra_hosts)
+    app["ui_assets"] = ui_assets()
     with open(__file__, "rb") as source:
         app["web_revision"] = hashlib.sha256(source.read()).hexdigest()
     app.add_routes(
@@ -647,7 +725,7 @@ def create_app(db):
             web.get("/api/latest", latest),
             web.get("/api/series", series),
             web.get("/healthz", health),
-            web.static("/static", os.path.join(HERE, "box")),
+            web.get("/static/{name}", static_asset),
         ]
     )
     return app
@@ -661,10 +739,14 @@ def main():
     p.add_argument("--db", default=os.path.join(HERE, "data", "owlet.db"))
     p.add_argument("--timezone", default=NIGHT_TIMEZONE_NAME,
                    help="IANA zone that defines a night, e.g. America/New_York")
+    p.add_argument("--allowed-host", action="append", default=[],
+                   help="extra host name the dashboard is reached by, e.g. a "
+                   "tailnet name; repeatable. Also OWLET_ALLOWED_HOSTS=a,b")
     a = p.parse_args()
     NIGHT_TIMEZONE_NAME, NIGHT_TIMEZONE = a.timezone, ZoneInfo(a.timezone)
 
-    web.run_app(create_app(a.db), host=a.host, port=a.port, access_log=None)
+    web.run_app(create_app(a.db, a.allowed_host), host=a.host, port=a.port,
+                access_log=None)
 
 
 if __name__ == "__main__":

@@ -28,7 +28,11 @@ interpretation.
 - Never commit `.owlet_tokens`, `data/`, or any recording. Fixtures in
   `tests/` are generated.
 - Logs carry counts only, never vitals. `--log-vitals` is for local debugging.
-- The web app has no authentication. It binds loopback; never `0.0.0.0`.
+- The web app has no authentication. It binds loopback; never `0.0.0.0`. It
+  only answers allowed `Host` names (DNS-rebinding protection) and serves only
+  the files in `box/ui-assets.sh`; keep both checks when adding routes.
+- Log errors with `owlet_client.describe()`, never the exception message: it
+  can carry request URLs, the device serial or headers.
 
 ## Gotchas
 

@@ -9,6 +9,8 @@
 # reachable from here (a tailnet name, or an SSH tunnel to 127.0.0.1:8400).
 set -euo pipefail
 BOX=${OWLET_HOST:?set OWLET_HOST to the SSH destination used by deploy.sh}
+[[ "$BOX" =~ ^[A-Za-z0-9_.@:-]+$ && "$BOX" != -* ]] ||
+  { echo "OWLET_HOST must be a plain SSH destination" >&2; exit 1; }
 here=$(cd "$(dirname "$0")/.." && pwd)
 URL=${OWLET_URL:?set OWLET_URL to the dashboard base URL}
 REMOTE=/home/owlet/owlet-recorder

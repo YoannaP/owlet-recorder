@@ -5,6 +5,7 @@ Every value is generated. Nothing here comes from a real child.
 
     uv run python scripts/demo_data.py data/demo.db --timezone America/New_York
     uv run python scripts/demo_data.py data/demo.db --live    # keeps adding readings
+    uv run python scripts/demo_data.py data/demo.db --overwrite   # start again
     uv run python server.py --db data/demo.db --timezone America/New_York
 
 Three weeks of nights (about 19:30 to 06:30 local) with sleep cycles, wakings,
@@ -16,6 +17,7 @@ import argparse
 import datetime as dt
 import json
 import math
+import os
 import random
 import sqlite3
 import sys
@@ -34,10 +36,34 @@ AWAKE, LIGHT, DEEP = 1, 8, 15
 POSITIONS = {AWAKE: [1, 1, 4, 6], LIGHT: [4, 5, 6, 8, 10], DEEP: [4, 5, 6, 10, 11]}
 
 
-def create(path):
+def holds_real_data(path):
+    """True if the file has anything this script did not write."""
+    connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    try:
+        tables = {row[0] for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'")}
+        if tables - {"vitals", "position_history", "sqlite_sequence"}:
+            return True
+        if "vitals" in tables and connection.execute(
+                "SELECT 1 FROM vitals WHERE dsn != ? LIMIT 1", (DSN,)).fetchone():
+            return True
+        return False
+    except sqlite3.DatabaseError:
+        return True
+    finally:
+        connection.close()
+
+
+def create(path, overwrite):
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
-        path.unlink()
+        # Never delete a real recording by pointing this at the wrong file.
+        if holds_real_data(path):
+            raise SystemExit(f"{path} holds data this script did not write; refusing to replace it.")
+        if not overwrite:
+            raise SystemExit(f"{path} exists; pass --overwrite to replace the demo data.")
+        for suffix in ("", "-wal", "-shm"):
+            Path(f"{path}{suffix}").unlink(missing_ok=True)
     connection = sqlite3.connect(path)
     columns = ", ".join(f"{name} {kind}" for name, kind in COLUMNS)
     connection.execute(
@@ -148,11 +174,13 @@ def main():
     parser.add_argument("--timezone", default="UTC")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--live", action="store_true", help="keep adding a reading every 5 s")
+    parser.add_argument("--overwrite", action="store_true",
+                        help="replace an existing demo database (never a real one)")
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
     zone = ZoneInfo(args.timezone)
-    connection = create(args.db)
+    connection = create(args.db, args.overwrite)
     history = open_history_db(args.db)
     now = int(time.time())
     today = dt.datetime.fromtimestamp(now, zone).date()
@@ -209,4 +237,5 @@ def main():
 
 
 if __name__ == "__main__":
+    os.umask(0o077)
     main()

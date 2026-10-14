@@ -18,7 +18,14 @@ import time
 
 from fetch_summaries import archive
 from fetch_summaries import open_db as open_summary_db
-from owlet_client import connect, get_socks, load_tokens, make_session, save_tokens
+from owlet_client import (
+    connect,
+    describe,
+    get_socks,
+    load_tokens,
+    make_session,
+    save_tokens,
+)
 from position_history import record_history
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -134,8 +141,9 @@ async def run(args):
         if not socks:
             raise SystemExit("No devices on this account.")
         sock = socks[0]
+        # The device serial stays out of the journal; the model is enough.
         log(
-            f"Logging {sock.serial} ({sock.oem_model}, region={region}) "
+            f"Logging {sock.oem_model} (region={region}) "
             f"every {args.interval}s -> {args.db}"
         )
 
@@ -169,7 +177,7 @@ async def run(args):
                             f"({summaries} this run)"
                         )
                     except Exception as e:
-                        log(f"summary fetch failed: {e}")
+                        log(f"summary fetch failed: {describe(e)}")
                     last_summary = time.time()
 
                 result = await sock.update_properties()
@@ -194,8 +202,8 @@ async def run(args):
                 errors = 0
 
                 # Heartbeat instead of per-sample logging: counts and whether the
-                # sock is reporting, never a vital sign. the-box.md rule 7 -- logs
-                # stay clean of personal data.
+                # sock is reporting, never a vital sign. Logs stay clean of
+                # personal data.
                 if not args.log_vitals and time.time() - last_beat > args.log_interval:
                     worn = not props.get("sock_off") and not props.get("charging")
                     log(
@@ -207,7 +215,7 @@ async def run(args):
 
             except Exception as e:
                 errors += 1
-                log(f"Error ({errors}): {type(e).__name__}: {e}")
+                log(f"Error ({errors}): {describe(e)}")
                 # Back off on repeated failures rather than hammering the API.
                 await asyncio.sleep(min(60, 2 ** min(errors, 6)))
                 continue
@@ -227,6 +235,8 @@ async def run(args):
 
 
 if __name__ == "__main__":
+    # Recordings and tokens are created owner-only, whatever the shell's umask.
+    os.umask(0o077)
     p = argparse.ArgumentParser()
     p.add_argument(
         "--interval",

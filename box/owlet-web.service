@@ -3,6 +3,8 @@
 # Reach it over an SSH tunnel or publish it to your tailnet with
 # `tailscale serve`; it must never bind a public address. It needs no outbound
 # internet, so it only accepts loopback and Tailscale (CGNAT/ULA) addresses.
+# It can read the code, write only the database folder (SQLite WAL readers need
+# its -shm file), and cannot see the Owlet token or settings at all.
 [Unit]
 Description=Owlet live dashboard
 After=network-online.target owlet-recorder.service
@@ -13,7 +15,7 @@ Type=simple
 User=owlet
 Group=owlet
 WorkingDirectory=/home/owlet/owlet-recorder
-ExecStart=/home/owlet/.local/bin/uv run python server.py \
+ExecStart=/home/owlet/owlet-recorder/.venv/bin/python server.py \
     --host 127.0.0.1 --port 8400 --db /home/owlet/owlet-data/owlet.db
 EnvironmentFile=-/home/owlet/owlet.env
 Restart=on-failure
@@ -24,7 +26,9 @@ SyslogIdentifier=owlet-web
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=tmpfs
-BindPaths=/home/owlet
+BindReadOnlyPaths=/home/owlet
+BindPaths=/home/owlet/owlet-data
+InaccessiblePaths=-/home/owlet/secrets -/home/owlet/owlet.env
 PrivateTmp=yes
 PrivateDevices=yes
 ProtectKernelTunables=yes
@@ -36,6 +40,12 @@ RestrictNamespaces=yes
 RestrictRealtime=yes
 RestrictSUIDSGID=yes
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SocketBindAllow=tcp:8400
+SocketBindDeny=any
+ProtectKernelLogs=yes
+ProtectProc=invisible
+ProcSubset=pid
+RemoveIPC=yes
 LockPersonality=yes
 CapabilityBoundingSet=
 AmbientCapabilities=
