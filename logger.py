@@ -67,9 +67,18 @@ def log(msg):
     print(f"{dt.datetime.now():%Y-%m-%d %H:%M:%S}  {msg}", flush=True)
 
 
+def restrict(path):
+    """Recordings are health data: owner-only, including files that an older
+    version created with looser permissions."""
+    for name in (path, f"{path}-wal", f"{path}-shm"):
+        if os.path.exists(name):
+            os.chmod(name, 0o600)
+
+
 def open_db(path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     conn = sqlite3.connect(path)
+    restrict(path)
     # WAL lets the web server read while we are still writing.
     conn.execute("PRAGMA journal_mode=WAL")
     cols = ",\n  ".join(f"{n} {t}" for n, t in COLUMNS)
@@ -278,4 +287,9 @@ if __name__ == "__main__":
         "(default 1800; Owlet keeps ~2 days of them)",
     )
     p.add_argument("--db", default=os.path.join(HERE, "data", "owlet.db"))
-    asyncio.run(run(p.parse_args()))
+    try:
+        asyncio.run(run(p.parse_args()))
+    except Exception as error:
+        # A traceback could print request URLs with the device serial.
+        log(f"Stopped: {describe(error)}")
+        sys.exit(1)

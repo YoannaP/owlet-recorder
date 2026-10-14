@@ -1,6 +1,7 @@
 """Regression checks for the v1 security review (DNS rebinding, request limits,
 static scope and response headers), against the real HTTP service."""
 import http.client
+import shutil
 import socket
 import subprocess
 import sys
@@ -93,6 +94,11 @@ class SecurityHttpTest(unittest.TestCase):
                 self.assertEqual(self.request(path)[0], 404)
         self.assertEqual(self.request("/static/plotly.min.js")[0], 200)
 
+    def test_malformed_host_is_refused(self):
+        for host in ("127.0.0.1:80@evil", "localhost evil", "evil:1:2", "[::1"):
+            with self.subTest(host=host):
+                self.assertEqual(self.request("/api/latest", host=host)[0], 421)
+
     def test_security_headers(self):
         for path in ("/", "/api/latest", "/static/missing.js"):
             with self.subTest(path=path):
@@ -102,6 +108,48 @@ class SecurityHttpTest(unittest.TestCase):
         _, headers, _ = self.request("/")
         self.assertIn("frame-ancestors 'none'", headers["Content-Security-Policy"])
         self.assertIn("script-src 'self'", headers["Content-Security-Policy"])
+
+
+
+class DeployedLayoutTest(unittest.TestCase):
+    """deploy.sh ships server.py and only the manifest assets in box/; the
+    server must start and serve from exactly that layout."""
+
+    def test_server_runs_from_the_deployed_layout(self):
+        assets = subprocess.run(
+            ["bash", "-c", 'source box/ui-assets.sh; printf "%s\\n" "${UI_ASSETS[@]}"'],
+            cwd=ROOT, check=True, capture_output=True, text=True,
+        ).stdout.split()
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            (target / "box").mkdir()
+            shutil.copy(ROOT / "server.py", target)
+            for name in assets:
+                shutil.copy(ROOT / "box" / name, target / "box")
+            create_fixture(target / "owlet.db")
+            port = free_port()
+            server = subprocess.Popen(
+                [sys.executable, "server.py", "--port", str(port), "--db", "owlet.db"],
+                cwd=target, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            )
+            try:
+                statuses = {}
+                for _ in range(50):
+                    try:
+                        for path in ("/", "/static/live.js", "/static/plotly.min.js",
+                                     "/api/latest"):
+                            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+                            connection.request("GET", path)
+                            statuses[path] = connection.getresponse().status
+                            connection.close()
+                        break
+                    except OSError:
+                        time.sleep(0.1)
+                self.assertEqual(set(statuses.values()), {200}, statuses)
+            finally:
+                server.terminate()
+                server.wait(timeout=5)
+                server.stderr.close()
 
 
 if __name__ == "__main__":

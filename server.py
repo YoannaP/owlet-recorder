@@ -642,14 +642,19 @@ SECURITY_HEADERS = {
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
+HOST_HEADER = re.compile(
+    r"(?P<name>[a-z0-9.-]+|\[(?P<v6>[0-9a-f:.]+)\]|(?P<bare>[0-9a-f]*:[0-9a-f:.]+))"
+    r"(?::\d{1,5})?"
+)
+
+
 def host_name(header):
-    """'Example.ts.net:8443' -> 'example.ts.net'; '[::1]:8400' -> '::1'."""
-    host = header.strip().lower()
-    if host.startswith("["):
-        host = host[1 : host.find("]")]
-    elif host.count(":") == 1:
-        host = host.split(":")[0]
-    return host.rstrip(".")
+    """'Example.ts.net:8443' -> 'example.ts.net'; '[::1]:8400' -> '::1'.
+    Anything that is not a plain host, address or port gives ''."""
+    match = HOST_HEADER.fullmatch(header.strip().lower())
+    if not match:
+        return ""
+    return (match["v6"] or match["bare"] or match["name"]).rstrip(".")
 
 
 @web.middleware
@@ -680,19 +685,18 @@ async def cache_headers(request, handler):
     return response
 
 
-def ui_assets():
-    """Only the files box/ui-assets.sh ships are served, never the whole box/
-    folder (which also holds deploy scripts and unit files)."""
-    with open(os.path.join(HERE, "box", "ui-assets.sh")) as manifest:
-        block = re.search(r"UI_ASSETS=\((.*?)\)", manifest.read(), re.S).group(1)
-    return {name for name in block.split() if not name.startswith("#")}
+# Only page assets directly inside box/ are served, never the deploy scripts,
+# unit files or notices that share the folder in a checkout. Decided per
+# request, so it works in a deployed layout that holds only the assets.
+STATIC_NAME = re.compile(r"[a-z0-9][a-z0-9._-]*\.(?:html|js|css)")
 
 
 async def static_asset(request):
     name = request.match_info["name"]
-    if name not in request.app["ui_assets"]:
+    path = os.path.join(HERE, "box", name)
+    if not STATIC_NAME.fullmatch(name) or os.path.islink(path) or not os.path.isfile(path):
         raise web.HTTPNotFound()
-    return web.FileResponse(os.path.join(HERE, "box", name))
+    return web.FileResponse(path)
 
 
 async def index(request):
@@ -712,7 +716,6 @@ def create_app(db, extra_hosts=()):
     app = web.Application(middlewares=[host_check, cache_headers])
     app["db"] = db
     app["allowed_hosts"] = allowed_hosts(extra_hosts)
-    app["ui_assets"] = ui_assets()
     with open(__file__, "rb") as source:
         app["web_revision"] = hashlib.sha256(source.read()).hexdigest()
     app.add_routes(

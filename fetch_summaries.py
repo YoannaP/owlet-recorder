@@ -22,6 +22,9 @@ DB = os.path.join(HERE, "data", "owlet.db")
 def open_db(path=DB):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     conn = sqlite3.connect(path)
+    for name in (path, f"{path}-wal", f"{path}-shm"):
+        if os.path.exists(name):
+            os.chmod(name, 0o600)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS summaries (
@@ -111,4 +114,10 @@ async def main():
 
 if __name__ == "__main__":
     os.umask(0o077)
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as error:
+        # A traceback could print request URLs with the device serial.
+        from owlet_client import describe
+
+        sys.exit(f"Stopped: {describe(error)}")

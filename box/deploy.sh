@@ -48,7 +48,7 @@ if command -v python3 >/dev/null; then
   python3 -c 'import sys, zoneinfo; zoneinfo.ZoneInfo(sys.argv[1])' "$TIMEZONE" 2>/dev/null ||
     fail "unknown time zone: $TIMEZONE"
 fi
-[[ -z "$SERVE_PORT" || ( "$SERVE_PORT" =~ ^[0-9]{1,5}$ && "$SERVE_PORT" -le 65535 ) ]] ||
+[[ -z "$SERVE_PORT" || ( "$SERVE_PORT" =~ ^[1-9][0-9]{0,4}$ && "$SERVE_PORT" -le 65535 ) ]] ||
   fail "SERVE_PORT must be a port number"
 [[ "$ALLOWED" =~ ^[A-Za-z0-9.:,_-]*$ ]] ||
   fail "OWLET_ALLOWED_HOSTS must be comma-separated host names or addresses"
@@ -89,6 +89,26 @@ rollback_dir=$ROLLBACK_ROOT/$rollback_id
 printf -v asset_args ' box/%q' "${UI_ASSETS[@]}"
 ssh "$BOX" "if test -f '$REMOTE/server.py'; then mkdir -p '$rollback_dir' && cd '$REMOTE' && { tar -czf '$rollback_dir/web.tar.gz' server.py \$(for f in$asset_args; do test -f \"\$f\" && printf '%s ' \"\$f\"; done); } && sha256sum '$rollback_dir/web.tar.gz' > '$rollback_dir/SHA256SUMS'; fi"
 
+# Token and settings go first, so new code never starts without them.
+if [[ -n "$SERVE_PORT" ]]; then
+  # The dashboard only answers names it expects (DNS-rebinding protection).
+  tailnet=$(ssh "$BOX" "tailscale status --json 2>/dev/null | python3 -c 'import json, sys; s = json.load(sys.stdin)[\"Self\"]; d = s[\"DNSName\"].rstrip(\".\"); print(\",\".join([d, d.split(\".\")[0]] + s.get(\"TailscaleIPs\", [])))'" || true)
+  [[ "$tailnet" =~ ^[A-Za-z0-9.:,_-]*$ ]] || fail "unexpected tailnet names from the host"
+  ALLOWED=${ALLOWED:+$ALLOWED,}$tailnet
+fi
+
+say "Delivering Owlet tokens and settings (0600; your password never leaves this machine)"
+# Sent on stdin and renamed into place, so it is never briefly missing or
+# readable, and no rsync-version-specific options are needed.
+ssh "$BOX" "umask 077 && cat > $SECRETS/owlet_tokens.new && chown $APP:$APP $SECRETS/owlet_tokens.new && mv -f $SECRETS/owlet_tokens.new $SECRETS/owlet_tokens" < "$here/.owlet_tokens"
+# Values were validated above; they travel on stdin, not through a remote shell.
+ssh "$BOX" "cat > /home/$APP/owlet.env" <<ENV_EOF
+OWLET_TIMEZONE=$TIMEZONE
+OWLET_TOKENS=$SECRETS/owlet_tokens
+OWLET_ALLOWED_HOSTS=$ALLOWED
+ENV_EOF
+ssh "$BOX" "chown $APP:$APP /home/$APP/owlet.env && chmod 600 /home/$APP/owlet.env"
+
 say "Delivering code (HEAD $(git -C "$here" rev-parse --short HEAD))"
 rsync -a --delete \
   --exclude '.venv' --exclude '__pycache__' \
@@ -99,24 +119,8 @@ ssh "$BOX" "mkdir -p '$REMOTE/box'"
 for asset in "${UI_ASSETS[@]}"; do
   rsync -a "$stage/box/$asset" "$BOX:$REMOTE/box/"
 done
-
-if [[ -n "$SERVE_PORT" ]]; then
-  # The dashboard only answers names it expects (DNS-rebinding protection).
-  tailnet=$(ssh "$BOX" "tailscale status --json 2>/dev/null | python3 -c 'import json, sys; s = json.load(sys.stdin)[\"Self\"]; d = s[\"DNSName\"].rstrip(\".\"); print(\",\".join([d, d.split(\".\")[0]] + s.get(\"TailscaleIPs\", [])))'" || true)
-  [[ "$tailnet" =~ ^[A-Za-z0-9.:,_-]*$ ]] || fail "unexpected tailnet names from the host"
-  ALLOWED=${ALLOWED:+$ALLOWED,}$tailnet
-fi
-
-say "Delivering Owlet tokens and settings (0600; your password never leaves this machine)"
-rsync -a --chmod=F600 "$here/.owlet_tokens" "$BOX:$SECRETS/owlet_tokens"
-# Values were validated above; they travel on stdin, not through a remote shell.
-ssh "$BOX" "cat > /home/$APP/owlet.env" <<ENV_EOF
-OWLET_TIMEZONE=$TIMEZONE
-OWLET_TOKENS=$SECRETS/owlet_tokens
-OWLET_ALLOWED_HOSTS=$ALLOWED
-ENV_EOF
-# Older installs kept the token beside the code.
-ssh "$BOX" "rm -f $REMOTE/.owlet_tokens && chown -R $APP:$APP /home/$APP && chmod 600 $SECRETS/owlet_tokens /home/$APP/owlet.env"
+# Older installs kept the token beside the code; it now lives in $SECRETS.
+ssh "$BOX" "rm -f $REMOTE/.owlet_tokens && chown -R $APP:$APP $REMOTE"
 
 say "Resolving dependencies (locked)"
 ssh "$BOX" "runuser -u $APP -- sh -c 'cd $REMOTE && /home/$APP/.local/bin/uv sync --locked'"

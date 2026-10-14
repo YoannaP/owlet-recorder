@@ -1,6 +1,7 @@
 # Secrets. .owlet_tokens holds a live Firebase refresh token for your Owlet
 # account -- anyone with it can read the sock. It must never be committed.
 .owlet_tokens
+.owlet_tokens.*
 .env
 
 # Recordings are health data. Keep them out of git.
