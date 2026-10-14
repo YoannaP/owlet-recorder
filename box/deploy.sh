@@ -119,8 +119,9 @@ ssh "$BOX" "mkdir -p '$REMOTE/box'"
 for asset in "${UI_ASSETS[@]}"; do
   rsync -a "$stage/box/$asset" "$BOX:$REMOTE/box/"
 done
-# Older installs kept the token beside the code; it now lives in $SECRETS.
-ssh "$BOX" "rm -f $REMOTE/.owlet_tokens && chown -R $APP:$APP $REMOTE"
+# Older installs kept the token beside the code (it now lives in $SECRETS) and
+# shipped folders the host does not need; --delete leaves excluded paths alone.
+ssh "$BOX" "rm -f $REMOTE/.owlet_tokens && rm -rf $REMOTE/docs $REMOTE/scripts $REMOTE/tests && chown -R $APP:$APP $REMOTE"
 
 say "Resolving dependencies (locked)"
 ssh "$BOX" "runuser -u $APP -- sh -c 'cd $REMOTE && /home/$APP/.local/bin/uv sync --locked'"

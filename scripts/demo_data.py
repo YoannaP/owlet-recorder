@@ -44,7 +44,7 @@ def holds_real_data(path):
             "SELECT name FROM sqlite_master WHERE type='table'")}
         if tables - {"vitals", "position_history", "sqlite_sequence"}:
             return True
-        for table in ("vitals", "position_history") & tables:
+        for table in {"vitals", "position_history"} & tables:
             if connection.execute(
                     f"SELECT 1 FROM {table} WHERE dsn != ? LIMIT 1", (DSN,)).fetchone():
                 return True

@@ -30,7 +30,8 @@ interpretation.
 - Logs carry counts only, never vitals. `--log-vitals` is for local debugging.
 - The web app has no authentication. It binds loopback; never `0.0.0.0`. It
   only answers allowed `Host` names (DNS-rebinding protection) and serves only
-  the files in `box/ui-assets.sh`; keep both checks when adding routes.
+  page assets (`.html`, `.js`, `.css`) directly in `box/`; keep both checks
+  when adding routes, and never put a private file with those extensions there.
 - Log errors with `owlet_client.describe()`, never the exception message: it
   can carry request URLs, the device serial or headers.
 

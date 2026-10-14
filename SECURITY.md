@@ -35,8 +35,9 @@ Out of scope:
   name it was configured with (`--allowed-host`, `OWLET_ALLOWED_HOSTS`), which
   blocks DNS-rebinding pages. Every route is read-only.
 - Responses carry a strict Content-Security-Policy (scripts from the app only,
-  no framing), `nosniff` and `no-referrer`. `/static/` serves only the files
-  listed in `box/ui-assets.sh`. `/api/series` is limited to 48 hours.
+  no framing), `nosniff` and `no-referrer`. `/static/` serves only page assets
+  (`.html`, `.js`, `.css`) directly in `box/`, never scripts, unit files or
+  symlinks. `/api/series` is limited to 48 hours.
 - `.owlet_tokens` holds a Firebase refresh token that can read the sock. It is
   written atomically with mode `0600` (an existing file's looser permissions are
   never inherited), git-ignored, and copied to the host only by
