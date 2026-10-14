@@ -31,9 +31,10 @@ reading for as long as you like.
 
 ## Requirements
 
-- An Owlet Dream Sock (sock version 3; tested on `SS3-Sleep`) and its account.
-  Both the `europe` and `world` Owlet regions are supported and detected at
-  login.
+- An Owlet Dream Sock (sock version 3) and its account. Tested with an
+  `SS3-Sleep-EU` sock on Owlet's `europe` region. The `world` region is
+  implemented and detected at login, but has not been tested with a real
+  account; reports are welcome.
 - Python 3.11+ and [uv](https://docs.astral.sh/uv/) (or plain `pip`).
 - Something that stays on overnight. A laptop works until its lid closes; a
   Raspberry Pi, NAS or small Linux server is better.
@@ -90,7 +91,7 @@ To re-record the GIF above, see the header of `scripts/record_demo.mjs`.
 ## Running it on a server
 
 `box/` contains a deploy script and two hardened systemd units for an
-always-on Linux host (Debian/Ubuntu). It creates a dedicated `owlet` user with
+always-on Linux host (Debian/Ubuntu, systemd 249 or later). It creates a dedicated `owlet` user with
 a `0700` home and a nologin shell. The recorder and web app run as that user,
 and the web app binds loopback only. The script deploys your committed `HEAD`,
 not uncommitted edits, and stores the Owlet token in a separate folder that the
@@ -108,6 +109,11 @@ OWLET_HOST=root@my-server OWLET_TIMEZONE=Europe/Paris ./box/deploy.sh
 | `SERVE_PORT`     | If set, publish the dashboard to your tailnet with `tailscale serve --http=$SERVE_PORT`. The host's tailnet names are then allowed automatically. |
 | `OWLET_ALLOWED_HOSTS` | Extra comma-separated names you open the dashboard by.                             |
 | `OWLET_URL`      | If set, the script verifies the served pages and cache headers at this base URL.       |
+
+> [!NOTE]
+> The current deploy script and units have been checked with dry runs and
+> static review, not yet on a fresh host. If something fails on yours, please
+> open an issue.
 
 Without Tailscale, reach it over an SSH tunnel:
 
